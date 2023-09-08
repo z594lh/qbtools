@@ -132,7 +132,7 @@ class operate extends qbApi
                 $this->deleteTorrents($v['hash']);
                 $this->echoString('删除错误种子:'.$v['name'].'('.$v['hash'].')');
             }
-            if(strpos($v['tags'], '已拆包') !== false && ( $v['size']> $this->util->toByte($partconfig['max_size']+2) || $v['size'] == 0 ) ){
+            if(strpos($v['tags'], '已拆包') !== false && ( $v['size']> $this->util->toByte($this->config['partpackage']['max_size']+2) || $v['size'] == 0 ) ){
                 $this->deleteTorrents($v['hash']);
                 $this->echoString('删除拆包不正确的种子:'.$v['name'].'('.$v['hash'].')');
             }
