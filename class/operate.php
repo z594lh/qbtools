@@ -20,13 +20,14 @@ class operate extends qbApi
      */
     public function partpackage(){
         $data = $this->getTorrentsInfo();
-        $raite = $this->config['partpackage']['raite'];
-        $min_size = $this->util->toByte($this->config['partpackage']['min_size']);
-        $max_size = $this->util->toByte($this->config['partpackage']['max_size']);
+        $partconfig = $this->config['partpackage'];
+        $raite = $partconfig['raite'];
+        $min_size = $this->util->toByte($partconfig['min_size']);
+        $max_size = $this->util->toByte($partconfig['max_size']);
         $size = 0;
         foreach ($data as $k => $v){
             /*已处理过的标签。直接跳过*/
-            if(strpos($v['tags'], '无法拆包') !== false || strpos($v['tags'], '已拆包') !== false || strpos($v['tags'], '小于'.$this->config['partpackage']['single_file_size'].'G不拆') !== false){
+            if(strpos($v['tags'], '无法拆包') !== false || strpos($v['tags'], '已拆包') !== false || strpos($v['tags'], '小于'.$partconfig['single_file_size'].'G不拆') !== false){
                 /*无法拆包且删除失败。再次尝试删除*/
                 if(strpos($v['tags'], '无法拆包') !== false){
                     $this->echoString('删除无法拆包1:'.$v['name'].'('.$v['hash'].')');
@@ -35,6 +36,19 @@ class operate extends qbApi
                 $this->echoString('当前标签:'.$v['tags'].'跳过拆包',false,false);
                 continue;
             }
+            /*限速*/
+            if($partconfig['limit_category']){
+                $limit_category = explode(',',$partconfig['limit_category']);
+                if(in_array($v['category'],$limit_category)){
+                    if($partconfig['upspeed'] && $partconfig['upspeed']>0){
+                        $this->setTorrentUploadLimit(array('hashes'=>$v['hash'],'limit'=>$partconfig['upspeed']*1024*1024));
+                    }
+                    if($partconfig['dlspeed'] && $partconfig['dlspeed']>0){
+                        $this->setTorrentDownloadLimit(array('hashes'=>$v['hash'],'limit'=>$partconfig['dlspeed']*1024*1024));
+                    }
+                }
+            }
+
             /*根据种子大小和配置的拆包比例，算出最终拆包后的大小(不超过最大、最小size)*/
             $raite_size = $v['total_size'] * $raite;
             $size = $raite_size>$max_size?$max_size:$raite_size;
@@ -71,14 +85,14 @@ class operate extends qbApi
             }
 
             if(count($_files)<=1){
-                if(isset($this->config['partpackage']['single_file_category']) && $this->config['partpackage']['single_file_category']!='' && isset($this->config['partpackage']['single_file_size']) && $this->config['partpackage']['single_file_size'] !=''){
-                    $single_file_category = explode(',',$this->config['partpackage']['single_file_category']);
-                    if($_files[0]['size'] < $this->util->toByte($this->config['partpackage']['single_file_size']) && in_array($v['category'],$single_file_category) ){
-                        $this->addTorrentTags(array('hashes'=>$v['hash'],'tags'=>'小于'.$this->config['partpackage']['single_file_size'].'G不拆'));
+                if(isset($partconfig['single_file_category']) && $partconfig['single_file_category']!='' && isset($partconfig['single_file_size']) && $partconfig['single_file_size'] !=''){
+                    $single_file_category = explode(',',$partconfig['single_file_category']);
+                    if($_files[0]['size'] < $this->util->toByte($partconfig['single_file_size']) && in_array($v['category'],$single_file_category) ){
+                        $this->addTorrentTags(array('hashes'=>$v['hash'],'tags'=>'小于'.$partconfig['single_file_size'].'G不拆'));
                         $arr = array('hash'=>$v['hash'],'id'=>$_files[0]['index'], 'priority'=>'1');
                         $this->setFilePriority($arr);
                         $this->resumeTorrents($v['hash']);
-                        $this->echoString('小于'.$this->config['partpackage']['single_file_size'].'G不拆:'.$v['name'].'('.$v['hash'].')');
+                        $this->echoString('小于'.$partconfig['single_file_size'].'G不拆:'.$v['name'].'('.$v['hash'].')');
                         continue;
                     }
                 }
@@ -91,6 +105,11 @@ class operate extends qbApi
                 $this->echoString('已拆包:'.$v['name'].'('.$v['hash'].')');
             }
         }
+    }
+
+    public function limitspeed($data){
+
+
     }
 
 
@@ -113,7 +132,7 @@ class operate extends qbApi
                 $this->deleteTorrents($v['hash']);
                 $this->echoString('删除错误种子:'.$v['name'].'('.$v['hash'].')');
             }
-            if(strpos($v['tags'], '已拆包') !== false && ( $v['size']> $this->util->toByte($this->config['partpackage']['max_size']+2) || $v['size'] == 0 ) ){
+            if(strpos($v['tags'], '已拆包') !== false && ( $v['size']> $this->util->toByte($partconfig['max_size']+2) || $v['size'] == 0 ) ){
                 $this->deleteTorrents($v['hash']);
                 $this->echoString('删除拆包不正确的种子:'.$v['name'].'('.$v['hash'].')');
             }
