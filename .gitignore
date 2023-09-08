@@ -3,3 +3,4 @@
 
 # 排除.idea文件夹
 .idea/
+.log/
