@@ -1,0 +1,2 @@
+* * * * * root /usr/bin/php -f /execute.php method=partpackage  >> /var/log/cron.log
+*/3 * * * * root /usr/bin/php -f /execute.php method=autoRemoveTorrents   >> /var/log/cron.log
